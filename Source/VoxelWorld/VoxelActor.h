@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "ProceduralMeshComponent.h"
+#include "SimplexNoiseBPLibrary.h"
 #include "VoxelActor.generated.h"
-
 
 struct FMeshSection
 {
@@ -67,6 +67,12 @@ public:
 		int32 ChunkZElements;
 
 	UPROPERTY()
+		int32 ChunkLineElementsExt;
+
+	UPROPERTY()
+		int32 ChunkLineElementsP2Ext;
+
+	UPROPERTY()
 		int32 ChunkLineElementsP2;
 
 	UPROPERTY()
@@ -79,8 +85,12 @@ public:
 		UProceduralMeshComponent* proceduralComponent;
 
 	UFUNCTION(BlueprintNativeEvent)
-		TArray <int32> calculateNoise();
-	virtual TArray <int32> calculateNoise_Implementation();
+		void AddInstanceVoxel(FVector InstanceLocation);
+	virtual void AddInstanceVoxel_Implementation(FVector InstanceLocation);
+
+	//UFUNCTION(BlueprintNativeEvent)
+	//	TArray <int32> CalculateNoise();
+	//virtual TArray <int32> CalculateNoise_Implementation();
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 	void SetVoxel(FVector localPos, int32 value);
@@ -96,8 +106,13 @@ public:
 
 	virtual void OnConstruction(const FTransform & Transform) override;
 
+	TArray <int32> CalculateNoise();
+
+private:
 
 	void GenerateChunks();
 
 	void UpdateMesh();
+
+	bool inRange(int32 value, int32 range);
 };

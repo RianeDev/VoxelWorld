@@ -1,5 +1,6 @@
 #include "VoxelActor.h"
 
+
 const int32 bTriangles[] = { 2,1,0,0,3,2 };
 const FVector2D bUVs[] = { FVector2D(0.000000, 0.000000), FVector2D(0.00000, 1.00000), FVector2D(1.00000, 1.00000), FVector2D(1.00000,0.000000) };
 const FVector bNormals0[] = { FVector(0,0,1), FVector(0,0,1), FVector(0,0,1), FVector(0,0,1) };
@@ -32,8 +33,13 @@ void AVoxelActor::Tick(float DeltaTime)
 void AVoxelActor::OnConstruction(const FTransform& Transform)
 {
 	ChunkZElements = 80;
+	//ChunkLineElementsP2 = ChunkLineElements * ChunkLineElements;
+	//ChunkTotalElements = ChunkLineElementsP2 * ChunkZElements;
+	ChunkLineElementsExt = ChunkLineElements + 2;
+	ChunkTotalElements = ChunkLineElementsExt * ChunkLineElementsExt * ChunkZElements;
 	ChunkLineElementsP2 = ChunkLineElements * ChunkLineElements;
-	ChunkTotalElements = ChunkLineElementsP2 * ChunkZElements;
+	ChunkLineElementsP2Ext = ChunkLineElementsExt * ChunkLineElementsExt;
+
 	VoxelSizeHalf = VoxelSize / 2;
 
 	FString string = "Voxel_" + FString::FromInt(ChunkXIndex) + "_" + FString::FromInt(ChunkYIndex);
@@ -53,33 +59,94 @@ void AVoxelActor::OnConstruction(const FTransform& Transform)
 
 void AVoxelActor::GenerateChunks()
 {
+	FRandomStream RandomStream = FRandomStream(RandomSeed);
+	TArray<FIntVector> TreeCenters;
+
 	ChunkFields.SetNumUninitialized(ChunkTotalElements);
 
-	TArray <int32> noise = calculateNoise();
+	TArray <int32> noise = CalculateNoise();
 
-	for (int x = 0; x < ChunkLineElements; x++)
+	for (int32 x = 0; x < ChunkLineElementsExt; x++)
 	{
-		for (int y = 0; y < ChunkLineElements; y++)
+		for (int32 y = 0; y < ChunkLineElementsExt; y++)
 		{
-			for (int z = 0; z < ChunkZElements; z++)
+			for (int32 z = 0; z < ChunkZElements; z++)
 			{
-				int32 index = x + (y * ChunkLineElements) + (z * ChunkLineElementsP2);
+				int32 index = x + (y * ChunkLineElementsExt) + (z * ChunkLineElementsP2Ext);
 
-				if (z == 30 + noise[x + y * ChunkLineElements]) ChunkFields[index] = 1;
-				else if (z == 29 + noise[x + y * ChunkLineElements]) ChunkFields[index] = 2;
-				else if (z < 29 + noise[x + y * ChunkLineElements]) ChunkFields[index] = 3;
+				//if (z == 31 + noise[x + y * ChunkLineElements] && RandomStream.FRand() < 0.01) TreeCenters.Add(FIntVector(x, y, z)); // get random for tree spawn
+
+				if (z == 30 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = 11; // grass
+				else if (z == 29 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = 12; // dirt
+				else if (z < 29 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = 13; // stone
 				else ChunkFields[index] = 0;
-				// if equal to 30, do voxel with 2nd material in material array. 
-				 // if over 30, do voxel with 1st.
+
+
+				// if equal to 30, do voxel with 1st material in material array. 
+				// if 29, do voxel with 2nd. etc.
 				// eventually would be better to have as exposed pins to adjust in the actor BP!
 			}
 		}
 	}
+
+	// tree range (smaller so they don't spawn on edges)
+
+	for (int32 x = 2; x < ChunkLineElementsExt-2; x++)
+	{
+		for (int32 y = 2; y < ChunkLineElementsExt-2; y++)
+		{
+			for (int32 z = 0; z < ChunkZElements; z++)
+			{
+				int32 index = x + (y * ChunkLineElementsExt) + (z * ChunkLineElementsP2Ext);
+				if (RandomStream.FRand() < 0.03 && z == 31 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = -1; // < 0.03 is chance of spawning, increase if more needed, etc
+				if (RandomStream.FRand() < 0.01 && z == 31 + noise[x + y * ChunkLineElementsExt]) TreeCenters.Add(FIntVector(x, y, z));
+			}
+		}
+	}
+
+	// end tree range
+
+	for (FIntVector TreeCenter : TreeCenters)
+	{
+		int32 tree_height = RandomStream.RandRange(3, 6); // determine height of tree trunk
+		int32 randomX = RandomStream.RandRange(0, 2); // leaf shapes
+		int32 randomY = RandomStream.RandRange(0, 2); // leaf shapes
+		int32 randomZ = RandomStream.RandRange(0, 2); // leaf shapes
+
+		// tree leaves (generated first, so that tree trunk does not spawn where leaves should be!)
+		for (int32 tree_x = -2; tree_x < 3; tree_x++)
+		{
+			for (int32 tree_y = -2; tree_y < 3; tree_y++)
+			{
+				for (int32 tree_z = -2; tree_z < 3; tree_z++)
+				{
+					if (inRange(tree_x + TreeCenter.X + 1, ChunkLineElements + 1) && inRange(tree_y + TreeCenter.Y + 1, ChunkLineElements + 1) && inRange(tree_z + TreeCenter.Z + tree_height + 1, ChunkZElements))
+					{
+							float radius = FVector(tree_x * randomX, tree_y * randomY, tree_z * randomZ).Size();
+
+							if (radius <= 2.8)
+								if (RandomStream.FRand() < 0.5 || radius <= 1.4) // check if values in range of ChunkField size.
+									ChunkFields[TreeCenter.X + tree_x + (ChunkLineElementsExt * (TreeCenter.Y + tree_y)) + (ChunkLineElementsP2Ext * (TreeCenter.Z + tree_z + tree_height))] = 1;
+						
+					}
+				}
+			}
+		} // end of leaves
+	
+		// tree trunk
+		for (int32 h = 0; h < tree_height; h++)
+		{
+			ChunkFields[TreeCenter.X + (TreeCenter.Y * ChunkLineElementsExt) + ((TreeCenter.Z + h) * ChunkLineElementsP2Ext)] = 14;
+		}
+	
+	
+	}
+
+	// transparent materials and full TODO
 }
 
 void AVoxelActor::UpdateMesh()
-{
-	
+{	
 	TArray<FMeshSection> MeshSections;
 	MeshSections.SetNum(Materials.Num());
 	int32 el_num = 0;
@@ -91,10 +158,10 @@ void AVoxelActor::UpdateMesh()
 		{
 			for (int z = 0; z < ChunkZElements; z++)
 			{
-				int32 index = x + (y * ChunkLineElements) + (z * ChunkLineElementsP2);
+				int32 index = (x + 1) + (ChunkLineElementsExt * (y + 1)) + (ChunkLineElementsP2Ext * z); // minus or plus?
 				int32 MeshIndex = ChunkFields[index];
 
-				if (MeshIndex > 0)
+				if (MeshIndex > 0) // ignore anything from 0-10 (transparent voxels)
 				{
 					MeshIndex--;
 
@@ -110,20 +177,17 @@ void AVoxelActor::UpdateMesh()
 					int triangle_num = 0;
 					for (int i = 0; i < 6; i++)
 					{
-						int newIndex = index + bMask[i].X + (bMask[i].Y * ChunkLineElements) + (bMask[i].Z * ChunkLineElementsP2);
+						int newIndex = index + bMask[i].X + (bMask[i].Y * ChunkLineElementsExt) + (bMask[i].Z * ChunkLineElementsP2Ext);
+
 						bool flag = false;
 						if (MeshIndex >= 20) flag = true;
+						//else if ((x + bMask[i].X < ChunkLineElements) && (x + bMask[i].X >= 0) && (y + bMask[i].Y < ChunkLineElements) && (y + bMask[i].Y >= 0))
+						
+						else if (newIndex < ChunkFields.Num() && newIndex >= 0)
+							if (ChunkFields[newIndex] < 10 ) flag = true;
+						
 
-
-						else if ((x + bMask[i].X < ChunkLineElements) && (x + bMask[i].X >= 0) && (y + bMask[i].Y < ChunkLineElements) && (y + bMask[i].Y >= 0))
-						{
-							if (newIndex < ChunkFields.Num() && newIndex >= 0)
-								//if (ChunkFields[newIndex] >= 0) flag = true;
-								if (ChunkFields[newIndex] < 1 ) flag = true;
-								// Possibly not flagging properly. Tried multiple variations. None work.
-						}
-
-						else flag = true;
+						//else flag = true;
 
 						if (flag)
 						{
@@ -202,9 +266,14 @@ void AVoxelActor::UpdateMesh()
 							VertexColor.Add(color); VertexColor.Add(color); VertexColor.Add(color); VertexColor.Add(color);
 						}
 					}
-					el_num += triangle_num;
-					MeshSections[MeshIndex].elementID += triangle_num;
 
+
+					el_num += triangle_num;
+					MeshSections[MeshIndex].elementID += triangle_num;	
+				}
+				else if (MeshIndex == -1)
+				{
+					AddInstanceVoxel(FVector(x* VoxelSize, y* VoxelSize, z* VoxelSize));
 				}
 			}
 		}
@@ -225,22 +294,51 @@ void AVoxelActor::UpdateMesh()
 	}
 }
 
-TArray<int32> AVoxelActor::calculateNoise_Implementation()
+TArray<int32> AVoxelActor::CalculateNoise()
 {
-	TArray<int32> aa;
-	aa.SetNum(ChunkLineElementsP2);
-	return aa;
+	TArray<int32> noises;
+	noises.Reserve(ChunkLineElementsExt * ChunkLineElementsExt);
+	for (int32 y = -1; y <= ChunkLineElements; y++)
+		{
+			for (int32 x = -1; x <= ChunkLineElements; x++)
+			{
+				float NoiseValue =
+				USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.01f, (ChunkYIndex * ChunkLineElements + y) * 0.01f) * 4 +
+				USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.01f, (ChunkYIndex * ChunkLineElements + y) * 0.01f) * 8 +
+				USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.004f, (ChunkYIndex * ChunkLineElements + y) * 0.004f) * 16 + 
+				FMath::Clamp(USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.05f, (ChunkYIndex * ChunkLineElements + y) * 0.05f), 0.0f, 5.0f) * 4; //clamp 0-5
+				noises.Add(FMath::FloorToInt(NoiseValue));
+			}
+		}
+	return noises;
 }
+
+//TArray<int32> AVoxelActor::CalculateNoise_Implementation()
+//{
+//	TArray<int32> aa;
+//	aa.SetNum(ChunkLineElementsP2);
+//	return aa;
+//}
 
 void AVoxelActor::SetVoxel(FVector localPos, int32 value)
 {
-	int32 x = localPos.X / VoxelSize;
-	int32 y = localPos.Y / VoxelSize;
+	int32 x = localPos.X / VoxelSize + 1;
+	int32 y = localPos.Y / VoxelSize + 1;
 	int32 z = localPos.Z / VoxelSize;
 
-	int32 index = x + (y * ChunkLineElements) + (z * ChunkLineElementsP2);
+	int32 index = x + (y * ChunkLineElementsExt) + (z * ChunkLineElementsP2Ext);
 
 	ChunkFields[index] = value;
 
 	UpdateMesh();
+}
+
+bool AVoxelActor::inRange(int32 value, int32 range)
+{
+	return (value >= 0 && value < range); // return true if value is 0 or higher and is lower than range
+}
+
+void AVoxelActor::AddInstanceVoxel_Implementation(FVector InstanceLocation)  // 36:11
+{
+
 }
