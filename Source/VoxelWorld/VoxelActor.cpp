@@ -98,7 +98,8 @@ void AVoxelActor::GenerateChunks()
 			for (int32 z = 0; z < ChunkZElements; z++)
 			{
 				int32 index = x + (y * ChunkLineElementsExt) + (z * ChunkLineElementsP2Ext);
-				if (RandomStream.FRand() < 0.03 && z == 31 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = -1; // < 0.03 is chance of spawning, increase if more needed, etc
+				if (RandomStream.FRand() < 0.05 && z == 31 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = -1; // < 0.05 is chance of spawning, increase if more needed, etc
+				if (RandomStream.FRand() < 0.05 && z == 31 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = -2; // flowers
 				if (RandomStream.FRand() < 0.01 && z == 31 + noise[x + y * ChunkLineElementsExt]) TreeCenters.Add(FIntVector(x, y, z));
 			}
 		}
@@ -158,7 +159,7 @@ void AVoxelActor::UpdateMesh()
 		{
 			for (int z = 0; z < ChunkZElements; z++)
 			{
-				int32 index = (x + 1) + (ChunkLineElementsExt * (y + 1)) + (ChunkLineElementsP2Ext * z); // minus or plus?
+				int32 index = (x + 1) + (ChunkLineElementsExt * (y + 1)) + (ChunkLineElementsP2Ext * z);
 				int32 MeshIndex = ChunkFields[index];
 
 				if (MeshIndex > 0) // ignore anything from 0-10 (transparent voxels)
@@ -181,13 +182,10 @@ void AVoxelActor::UpdateMesh()
 
 						bool flag = false;
 						if (MeshIndex >= 20) flag = true;
-						//else if ((x + bMask[i].X < ChunkLineElements) && (x + bMask[i].X >= 0) && (y + bMask[i].Y < ChunkLineElements) && (y + bMask[i].Y >= 0))
 						
 						else if (newIndex < ChunkFields.Num() && newIndex >= 0)
 							if (ChunkFields[newIndex] < 10 ) flag = true;
 						
-
-						//else flag = true;
 
 						if (flag)
 						{
@@ -271,9 +269,14 @@ void AVoxelActor::UpdateMesh()
 					el_num += triangle_num;
 					MeshSections[MeshIndex].elementID += triangle_num;	
 				}
-				else if (MeshIndex == -1)
+				else if (MeshIndex == -1) // add grass
 				{
 					AddInstanceVoxel(FVector(x* VoxelSize, y* VoxelSize, z* VoxelSize));
+				}
+
+				else if (MeshIndex == -2) // add flowers
+				{
+					AddFoliageVoxel(FVector(x* VoxelSize, y* VoxelSize, z* VoxelSize));
 				}
 			}
 		}
@@ -338,7 +341,12 @@ bool AVoxelActor::inRange(int32 value, int32 range)
 	return (value >= 0 && value < range); // return true if value is 0 or higher and is lower than range
 }
 
-void AVoxelActor::AddInstanceVoxel_Implementation(FVector InstanceLocation)  // 36:11
+void AVoxelActor::AddInstanceVoxel_Implementation(FVector InstanceLocation)  // grass
+{
+
+}
+
+void AVoxelActor::AddFoliageVoxel_Implementation(FVector InstanceLocation)  //  flowers
 {
 
 }

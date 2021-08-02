@@ -88,6 +88,10 @@ public:
 		void AddInstanceVoxel(FVector InstanceLocation);
 	virtual void AddInstanceVoxel_Implementation(FVector InstanceLocation);
 
+	UFUNCTION(BlueprintNativeEvent)
+		void AddFoliageVoxel(FVector InstanceLocation);
+	virtual void AddFoliageVoxel_Implementation(FVector InstanceLocation);
+
 	//UFUNCTION(BlueprintNativeEvent)
 	//	TArray <int32> CalculateNoise();
 	//virtual TArray <int32> CalculateNoise_Implementation();
