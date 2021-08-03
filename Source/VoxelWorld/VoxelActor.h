@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "ProceduralMeshComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "SimplexNoiseBPLibrary.h"
 #include "VoxelActor.generated.h"
 
@@ -91,6 +92,10 @@ public:
 	UFUNCTION(BlueprintNativeEvent)
 		void AddFoliageVoxel(FVector InstanceLocation);
 	virtual void AddFoliageVoxel_Implementation(FVector InstanceLocation);
+
+	UFUNCTION(BlueprintNativeEvent)
+		void AddShrubVoxel(FVector InstanceLocation);
+	virtual void AddShrubVoxel_Implementation(FVector InstanceLocation);
 
 	//UFUNCTION(BlueprintNativeEvent)
 	//	TArray <int32> CalculateNoise();

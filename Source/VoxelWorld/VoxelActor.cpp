@@ -47,6 +47,8 @@ void AVoxelActor::OnConstruction(const FTransform& Transform)
 
 	proceduralComponent = NewObject<class UProceduralMeshComponent>(this, Name);
 	proceduralComponent->RegisterComponent();
+	proceduralComponent->SetCullDistance(5000);
+	proceduralComponent->SetBoundsScale(1.0);
 
 	RootComponent = proceduralComponent;
 	RootComponent->SetWorldTransform(Transform);
@@ -55,6 +57,7 @@ void AVoxelActor::OnConstruction(const FTransform& Transform)
 
 	GenerateChunks();
 	UpdateMesh();
+
 }
 
 void AVoxelActor::GenerateChunks()
@@ -98,9 +101,11 @@ void AVoxelActor::GenerateChunks()
 			for (int32 z = 0; z < ChunkZElements; z++)
 			{
 				int32 index = x + (y * ChunkLineElementsExt) + (z * ChunkLineElementsP2Ext);
-				if (RandomStream.FRand() < 0.05 && z == 31 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = -1; // < 0.05 is chance of spawning, increase if more needed, etc
-				if (RandomStream.FRand() < 0.05 && z == 31 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = -2; // flowers
-				if (RandomStream.FRand() < 0.01 && z == 31 + noise[x + y * ChunkLineElementsExt]) TreeCenters.Add(FIntVector(x, y, z));
+				if (RandomStream.FRand() < 0.08 && z == 31 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = -1; // grass
+				if (RandomStream.FRand() < 0.07 && z == 31 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = -1; // grass
+				if (RandomStream.FRand() < 0.04 && z == 31 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = -2; // flowers
+				if (RandomStream.FRand() < 0.03 && z == 31 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = -3; // shrubs
+				if (RandomStream.FRand() < 0.02 && z == 31 + noise[x + y * ChunkLineElementsExt]) TreeCenters.Add(FIntVector(x, y, z)); // trees
 			}
 		}
 	}
@@ -143,6 +148,7 @@ void AVoxelActor::GenerateChunks()
 	
 	}
 
+	// if (z == 28 + noise[x + y * ChunkLineElementsExt]) ChunkFields[index] = 9; // water
 	// transparent materials and full TODO
 }
 
@@ -274,10 +280,16 @@ void AVoxelActor::UpdateMesh()
 					AddInstanceVoxel(FVector(x* VoxelSize, y* VoxelSize, z* VoxelSize));
 				}
 
-				else if (MeshIndex == -2) // add flowers
+				else if (MeshIndex == -2) // add flowers/bushes/etc
 				{
 					AddFoliageVoxel(FVector(x* VoxelSize, y* VoxelSize, z* VoxelSize));
 				}
+
+				else if (MeshIndex == -3) // add flowers/bushes/etc
+				{
+					AddShrubVoxel(FVector(x* VoxelSize, y* VoxelSize, z* VoxelSize));
+				}
+
 			}
 		}
 	}
@@ -306,10 +318,10 @@ TArray<int32> AVoxelActor::CalculateNoise()
 			for (int32 x = -1; x <= ChunkLineElements; x++)
 			{
 				float NoiseValue =
-				USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.01f, (ChunkYIndex * ChunkLineElements + y) * 0.01f) * 4 +
-				USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.01f, (ChunkYIndex * ChunkLineElements + y) * 0.01f) * 8 +
-				USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.004f, (ChunkYIndex * ChunkLineElements + y) * 0.004f) * 16 + 
-				FMath::Clamp(USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.05f, (ChunkYIndex * ChunkLineElements + y) * 0.05f), 0.0f, 5.0f) * 4; //clamp 0-5
+				USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.01f, (ChunkYIndex * ChunkLineElements + y) * 0.01f) * 2 + // 0.01, 0.01, 4
+				USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.01f, (ChunkYIndex * ChunkLineElements + y) * 0.01f) * 4 + // 0.01, 0.01, 8
+				USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.004f, (ChunkYIndex * ChunkLineElements + y) * 0.004f) * 8 + // 0.004, 0.004, 16
+				FMath::Clamp(USimplexNoiseBPLibrary::SimplexNoise2D((ChunkXIndex * ChunkLineElements + x) * 0.05f, (ChunkYIndex * ChunkLineElements + y) * 0.05f), 0.0f, 5.0f) * 4; //clamp 0-5 ... 0.05, 0.0, 5
 				noises.Add(FMath::FloorToInt(NoiseValue));
 			}
 		}
@@ -347,6 +359,11 @@ void AVoxelActor::AddInstanceVoxel_Implementation(FVector InstanceLocation)  // 
 }
 
 void AVoxelActor::AddFoliageVoxel_Implementation(FVector InstanceLocation)  //  flowers
+{
+
+}
+
+void AVoxelActor::AddShrubVoxel_Implementation(FVector InstanceLocation)  //  shrubs
 {
 
 }
