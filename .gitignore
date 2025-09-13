@@ -12,7 +12,7 @@ Build/
 
 # Unreal Engine specific
 *.uproject
-*.uplugin
+# *.uplugin  # Allow plugin files
 *.uasset
 *.umap
 
