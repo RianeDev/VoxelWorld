@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/Engine.h"
+#include "TS_ProceduralNoise.h"
 #include "TS_WorldGenerator.generated.h"
 
 class UTS_ProceduralNoise;
@@ -206,11 +207,13 @@ private:
 	/**
 	 * Terrain noise parameters
 	 */
+	UPROPERTY()
 	FTS_NoiseParameters TerrainNoiseParams;
 
 	/**
 	 * Cave noise parameters
 	 */
+	UPROPERTY()
 	FTS_NoiseParameters CaveNoiseParams;
 
 	/**

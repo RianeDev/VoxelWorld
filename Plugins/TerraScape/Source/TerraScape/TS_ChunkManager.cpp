@@ -1084,8 +1084,7 @@ TArray<FTS_Voxel> UTS_ChunkManager::GenerateProceduralVoxels(const FIntVector& C
 
 				// Create voxel
 				FTS_Voxel Voxel;
-				Voxel.bIsSolid = Result.bIsSolid;
-				Voxel.MaterialID = Result.MaterialID;
+				Voxel.MaterialID = Result.bIsSolid ? Result.MaterialID : 0;
 				VoxelData[Index] = Voxel;
 			}
 		}
