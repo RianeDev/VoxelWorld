@@ -11,6 +11,7 @@
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TS_MaterialData.h"
+#include "TS_WorldGenerator.h"
 #include "Async/AsyncWork.h"
 
 UTS_ChunkManager::UTS_ChunkManager()
@@ -36,6 +37,9 @@ UTS_ChunkManager::UTS_ChunkManager()
 	
 	// Create material manager
 	MaterialManager = CreateDefaultSubobject<UTS_MaterialManager>(TEXT("MaterialManager"));
+
+	// Create world generator
+	WorldGenerator = CreateDefaultSubobject<UTS_WorldGenerator>(TEXT("WorldGenerator"));
 }
 
 void UTS_ChunkManager::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -71,8 +75,8 @@ void UTS_ChunkManager::CreateChunk(const FIntVector& ChunkID)
 	NewChunk.WorldPosition = CalculateChunkWorldPosition(ChunkID);
 	NewChunk.bIsLoaded = true;
 
-	// Generate simple test voxels
-	TArray<FTS_Voxel> VoxelData = GenerateTestVoxels(ChunkID);
+	// Generate voxels (procedural or test)
+	TArray<FTS_Voxel> VoxelData = bUseProceduralGeneration ? GenerateProceduralVoxels(ChunkID) : GenerateTestVoxels(ChunkID);
 
 	// Store the chunk and its data
 	LoadedChunks.Add(ChunkID, NewChunk);
@@ -1044,5 +1048,61 @@ FVector UTS_ChunkManager::CalculateChunkWorldPosition(const FIntVector& ChunkID)
 		ChunkID.Y * (ChunkWorldSize + ChunkGap), 
 		ChunkID.Z * (ChunkWorldSize + ChunkGap)
 	);
+}
+
+TArray<FTS_Voxel> UTS_ChunkManager::GenerateProceduralVoxels(const FIntVector& ChunkID)
+{
+	TArray<FTS_Voxel> VoxelData;
+	VoxelData.SetNum(ChunkSize * ChunkSize * ChunkSize);
+
+	if (!WorldGenerator)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("WorldGenerator is null, falling back to test voxels"));
+		return GenerateTestVoxels(ChunkID);
+	}
+
+	// Calculate chunk world position
+	FVector ChunkWorldPos = CalculateChunkWorldPosition(ChunkID);
+
+	// Generate voxels using world generator
+	for (int32 X = 0; X < ChunkSize; X++)
+	{
+		for (int32 Y = 0; Y < ChunkSize; Y++)
+		{
+			for (int32 Z = 0; Z < ChunkSize; Z++)
+			{
+				// Calculate world coordinates for this voxel
+				float WorldX = ChunkWorldPos.X + (X * VoxelSize);
+				float WorldY = ChunkWorldPos.Y + (Y * VoxelSize);
+				float WorldZ = ChunkWorldPos.Z + (Z * VoxelSize);
+
+				// Generate voxel using world generator
+				FTS_VoxelGenResult Result = WorldGenerator->GenerateVoxelAtLocation(WorldX, WorldY, WorldZ);
+
+				// Calculate array index
+				int32 Index = X + (Y * ChunkSize) + (Z * ChunkSize * ChunkSize);
+
+				// Create voxel
+				FTS_Voxel Voxel;
+				Voxel.bIsSolid = Result.bIsSolid;
+				Voxel.MaterialID = Result.MaterialID;
+				VoxelData[Index] = Voxel;
+			}
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Generated procedural voxels for chunk %d,%d,%d"), ChunkID.X, ChunkID.Y, ChunkID.Z);
+	return VoxelData;
+}
+
+void UTS_ChunkManager::SetProceduralGenerationEnabled(bool bEnabled)
+{
+	bUseProceduralGeneration = bEnabled;
+	UE_LOG(LogTemp, Log, TEXT("Procedural generation %s"), bEnabled ? TEXT("enabled") : TEXT("disabled"));
+}
+
+UTS_WorldGenerator* UTS_ChunkManager::GetWorldGenerator() const
+{
+	return WorldGenerator;
 }
 

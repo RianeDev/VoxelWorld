@@ -13,6 +13,7 @@
 #include "Async/AsyncWork.h"
 #include "TS_VoxelTypes.h"
 #include "TS_MaterialData.h"
+#include "TS_WorldGenerator.h"
 #include "TS_ChunkManager.generated.h"
 
 /**
@@ -98,6 +99,14 @@ public:
 	/** Material manager for handling voxel materials */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TerraScape | Materials")
 	UTS_MaterialManager* MaterialManager;
+
+	/** World generator for procedural terrain generation */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TerraScape | Procedural")
+	UTS_WorldGenerator* WorldGenerator;
+
+	/** Enable procedural generation instead of test voxels */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TerraScape | Procedural")
+	bool bUseProceduralGeneration = true;
 
 	/** Material data table for voxel materials */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TerraScape | Materials")
@@ -185,6 +194,15 @@ private:
 
 	/** Generate simple test voxels for a chunk */
 	TArray<FTS_Voxel> GenerateTestVoxels(const FIntVector& ChunkID);
+
+	/** Generate procedural voxel data for a chunk */
+	TArray<FTS_Voxel> GenerateProceduralVoxels(const FIntVector& ChunkID);
+
+	/** Enable or disable procedural generation */
+	void SetProceduralGenerationEnabled(bool bEnabled);
+
+	/** Get world generator instance */
+	UTS_WorldGenerator* GetWorldGenerator() const;
 
 	/** Generate mesh for a chunk with face culling */
 	void GenerateChunkMesh(const FIntVector& ChunkID);
