@@ -1,0 +1,26 @@
+CHUNK POSITIONING SYSTEM - WORKING CONFIGURATION
+
+Current Working Formula:
+- Chunk Size: 32 voxels
+- Voxel Size: 100 world units
+- Chunk World Size: 32 × 100 = 3200 world units
+- Chunk Gap: -1600 (exactly half of Chunk World Size)
+- Result: Gaps completely closed
+
+Pattern Discovered:
+ChunkGap = -(ChunkWorldSize / 2)
+
+Current Code Structure:
+1. CalculateChunkWorldPosition() uses: ChunkID.X * (ChunkWorldSize + ChunkGap)
+2. ChunkWorldSize = ChunkSize * VoxelSize
+3. When ChunkGap = -1600 and ChunkWorldSize = 3200:
+   - Chunk (0,0,0): 0 * (3200 + (-1600)) = 0
+   - Chunk (1,0,0): 1 * (3200 + (-1600)) = 1600
+   - Chunk (2,0,0): 2 * (3200 + (-1600)) = 3200
+   - Result: Chunks are adjacent (1600 units apart, which is half chunk size)
+
+Implementation:
+- Set ChunkGap = -(ChunkSize * VoxelSize) / 2
+- This automatically calculates the correct gap for any chunk size
+- Do NOT change the CalculateChunkWorldPosition formula
+- Do NOT change how ChunkGap is applied in the formula
